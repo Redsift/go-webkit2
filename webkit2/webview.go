@@ -6,7 +6,7 @@ package webkit2
 //
 // static WebKitWebView* to_WebKitWebView(GtkWidget* w) { return WEBKIT_WEB_VIEW(w); }
 //
-// #cgo pkg-config: webkit2gtk-3.0
+// #cgo pkg-config: webkit2gtk-4.0
 import "C"
 
 import (
@@ -18,6 +18,7 @@ import (
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/sqs/gojs"
 )
 
@@ -153,6 +154,18 @@ func (v *WebView) Destroy() {
 	v.Widget.Destroy()
 	v.webView = nil
 }
+
+
+func (v *WebView) SetBackgroundColor(color gdk.RGBA) {
+	C.webkit_web_view_set_background_color(v.webView, (*C.GdkRGBA)(unsafe.Pointer(color.Native())))
+}
+
+// func (v *WebView) GetBackgroundColor(color gdk.RGBA) (gdk.RGBA, error) {
+// 	rgba := &C.GdkRGBA{}
+
+// 	C.webkit_web_view_get_background_color(v.webView, unsafe.Pointer(rgba))
+// }
+
 
 // LoadEvent denotes the different events that happen during a WebView load
 // operation.
