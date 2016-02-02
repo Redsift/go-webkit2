@@ -156,7 +156,7 @@ func (v *WebView) Destroy() {
 }
 
 
-func (v *WebView) SetBackgroundColor(color gdk.RGBA) {
+func (v *WebView) SetBackgroundColor(color *gdk.RGBA) {
 	C.webkit_web_view_set_background_color(v.webView, (*C.GdkRGBA)(unsafe.Pointer(color.Native())))
 }
 
