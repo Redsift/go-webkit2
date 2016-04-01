@@ -18,13 +18,14 @@ import (
 	"unsafe"
 
 	"github.com/gotk3/gotk3/cairo"
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
-	"github.com/gotk3/gotk3/gdk"
 	"github.com/sqs/gojs"
 )
 
 type SnapshotOptions int
+
 const (
 	SnapshotOptionNone                         SnapshotOptions = C.WEBKIT_SNAPSHOT_OPTIONS_NONE
 	SnapshotOptionIncludeSelectionHighlighting                 = C.WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING
@@ -32,9 +33,10 @@ const (
 )
 
 type SnapshotRegion int
+
 const (
-	RegionVisible                              SnapshotRegion  = C.WEBKIT_SNAPSHOT_REGION_VISIBLE
-	RegionFullDocument                                         = C.WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT
+	RegionVisible      SnapshotRegion = C.WEBKIT_SNAPSHOT_REGION_VISIBLE
+	RegionFullDocument                = C.WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT
 )
 
 // WebView represents a WebKit WebView.
@@ -170,7 +172,6 @@ func (v *WebView) Destroy() {
 	v.webView = nil
 }
 
-
 func (v *WebView) SetBackgroundColor(color *gdk.RGBA) {
 	C.webkit_web_view_set_background_color(v.webView, (*C.GdkRGBA)(unsafe.Pointer(color.Native())))
 }
@@ -180,7 +181,6 @@ func (v *WebView) SetBackgroundColor(color *gdk.RGBA) {
 
 // 	C.webkit_web_view_get_background_color(v.webView, unsafe.Pointer(rgba))
 // }
-
 
 // LoadEvent denotes the different events that happen during a WebView load
 // operation.
@@ -281,7 +281,6 @@ func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)
 	v.GetSnapshotWithOptions(RegionFullDocument, SnapshotOptionNone, resultCallback)
 }
 
-
 func (v *WebView) GetSnapshotSurfaceWithOptions(region SnapshotRegion, options SnapshotOptions, resultCallback func(result *cairo.Surface, err error)) {
 	var cCallback C.GAsyncReadyCallback
 	var userData C.gpointer
@@ -301,7 +300,7 @@ func (v *WebView) GetSnapshotSurfaceWithOptions(region SnapshotRegion, options S
 
 			if status := surface.Status(); status == cairo.STATUS_SUCCESS {
 				resultCallback(surface, nil)
-			}else{
+			} else {
 				resultCallback(nil, fmt.Errorf("Cairo surface error %d", status))
 			}
 		}
