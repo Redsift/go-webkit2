@@ -16,9 +16,7 @@ import (
 	"fmt"
 	"image"
 	"unsafe"
-
 	"github.com/gotk3/gotk3/cairo"
-	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/sqs/gojs"
@@ -170,12 +168,6 @@ func (v *WebView) Destroy() {
 	v.Widget.Destroy()
 	v.webView = nil
 }
-
-// func (v *WebView) GetBackgroundColor(color gdk.RGBA) (gdk.RGBA, error) {
-// 	rgba := &C.GdkRGBA{}
-
-// 	C.webkit_web_view_get_background_color(v.webView, unsafe.Pointer(rgba))
-// }
 
 // LoadEvent denotes the different events that happen during a WebView load
 // operation.

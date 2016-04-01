@@ -19,3 +19,9 @@ const (
 func (v *WebView) SetBackgroundColor(color *gdk.RGBA) {
 	C.webkit_web_view_set_background_color(v.webView, (*C.GdkRGBA)(unsafe.Pointer(color.Native())))
 }
+
+// func (v *WebView) GetBackgroundColor(color gdk.RGBA) (gdk.RGBA, error) {
+// 	rgba := &C.GdkRGBA{}
+
+// 	C.webkit_web_view_get_background_color(v.webView, unsafe.Pointer(rgba))
+// }
