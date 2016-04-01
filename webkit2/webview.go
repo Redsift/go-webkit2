@@ -29,7 +29,6 @@ type SnapshotOptions int
 const (
 	SnapshotOptionNone                         SnapshotOptions = C.WEBKIT_SNAPSHOT_OPTIONS_NONE
 	SnapshotOptionIncludeSelectionHighlighting                 = C.WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING
-	SnapshotOptionTransparentBackground                        = C.WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND
 )
 
 type SnapshotRegion int
@@ -170,10 +169,6 @@ func (v *WebView) RunJavaScript(script string, resultCallback func(result *gojs.
 func (v *WebView) Destroy() {
 	v.Widget.Destroy()
 	v.webView = nil
-}
-
-func (v *WebView) SetBackgroundColor(color *gdk.RGBA) {
-	C.webkit_web_view_set_background_color(v.webView, (*C.GdkRGBA)(unsafe.Pointer(color.Native())))
 }
 
 // func (v *WebView) GetBackgroundColor(color gdk.RGBA) (gdk.RGBA, error) {
