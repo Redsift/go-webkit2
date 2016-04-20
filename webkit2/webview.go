@@ -1,11 +1,6 @@
 package webkit2
 
-// #include <stdlib.h>
-// #include <webkit2/webkit2.h>
-// #include <cairo/cairo.h>
-//
-// static WebKitWebView* to_WebKitWebView(GtkWidget* w) { return WEBKIT_WEB_VIEW(w); }
-//
+// #include "webview.h"
 // #cgo pkg-config: webkit2gtk-4.0
 import "C"
 
@@ -14,12 +9,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"image"
-	"unsafe"
 	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/sqs/gojs"
+	"image"
+	"unsafe"
 )
 
 type SnapshotOptions int
@@ -43,6 +38,139 @@ const (
 type WebView struct {
 	*gtk.Widget
 	webView *C.WebKitWebView
+}
+
+type RunJavaScriptResponse struct {
+	CWebView   *C.WebKitWebView
+	Reply      func(result *gojs.Value, err error)
+	Autoremove bool
+}
+
+type GetSnapshotAsImageResponse struct {
+	CWebView   *C.WebKitWebView
+	Reply      func(result *image.RGBA, err error)
+	Autoremove bool
+}
+
+type GetSnapshotAsCairoSurfaceResponse struct {
+	CWebView   *C.WebKitWebView
+	Reply      func(result *cairo.Surface, err error)
+	Autoremove bool
+}
+
+//export go_genericGAsyncCallback
+func go_genericGAsyncCallback(callbackId *C.char, source *C.GObject, result *C.GAsyncResult) {
+	key := C.GoString(callbackId)
+
+	if obj, ok := cgoget(key); ok {
+		switch obj.(type) {
+		case *RunJavaScriptResponse:
+			var jserr *C.GError
+
+			response := obj.(*RunJavaScriptResponse)
+
+			if response.Autoremove {
+				defer cgounregister(key)
+			}
+
+			if jsResult := C.webkit_web_view_run_javascript_finish(response.CWebView, result, &jserr); jsResult == nil {
+				defer C.g_error_free(jserr)
+				msg := C.GoString((*C.char)(jserr.message))
+				response.Reply(nil, errors.New(msg))
+			} else {
+				ctxRaw := gojs.RawGlobalContext(unsafe.Pointer(C.webkit_javascript_result_get_global_context(jsResult)))
+				jsValRaw := gojs.RawValue(unsafe.Pointer(C.webkit_javascript_result_get_value(jsResult)))
+				ctx := (*gojs.Context)(gojs.NewGlobalContextFrom(ctxRaw))
+				jsVal := ctx.NewValueFrom(jsValRaw)
+				response.Reply(jsVal, nil)
+			}
+
+		case *GetSnapshotAsImageResponse:
+			var snapErr *C.GError
+
+			response := obj.(*GetSnapshotAsImageResponse)
+
+			if response.Autoremove {
+				defer cgounregister(key)
+			}
+
+			if snapResult := C.webkit_web_view_get_snapshot_finish(response.CWebView, result, &snapErr); snapResult == nil {
+				defer C.g_error_free(snapErr)
+				msg := C.GoString((*C.char)(snapErr.message))
+				response.Reply(nil, errors.New(msg))
+			} else {
+				defer C.cairo_surface_destroy(snapResult)
+
+				if C.cairo_surface_get_type(snapResult) != cairoSurfaceTypeImage ||
+					C.cairo_image_surface_get_format(snapResult) != cairoImageSurfaceFormatARGB32 {
+					response.Reply(nil, errors.New("Snapshot in unexpected format"))
+					return
+				}
+
+				w := int(C.cairo_image_surface_get_width(snapResult))
+				h := int(C.cairo_image_surface_get_height(snapResult))
+				stride := int(C.cairo_image_surface_get_stride(snapResult))
+				data := unsafe.Pointer(C.cairo_image_surface_get_data(snapResult))
+				surfaceBytes := C.GoBytes(data, C.int(stride*h))
+
+				// convert from b,g,r,a or a,r,g,b(local endianness) to r,g,b,a
+				testint, _ := binary.ReadUvarint(bytes.NewBuffer([]byte{0x1, 0}))
+
+				if testint == 0x1 {
+					// Little: b,g,r,a -> r,g,b,a
+					for i := 0; i < w*h; i++ {
+						b := surfaceBytes[4*i+0]
+						r := surfaceBytes[4*i+2]
+						surfaceBytes[4*i+0] = r
+						surfaceBytes[4*i+2] = b
+					}
+				} else {
+					// Big: a,r,g,b -> r,g,b,a
+					for i := 0; i < w*h; i++ {
+						a := surfaceBytes[4*i+0]
+						r := surfaceBytes[4*i+1]
+						g := surfaceBytes[4*i+2]
+						b := surfaceBytes[4*i+3]
+						surfaceBytes[4*i+0] = r
+						surfaceBytes[4*i+1] = g
+						surfaceBytes[4*i+2] = b
+						surfaceBytes[4*i+3] = a
+					}
+				}
+
+				rgba := &image.RGBA{
+					Pix:    surfaceBytes,
+					Stride: stride,
+					Rect:   image.Rect(0, 0, w, h),
+				}
+
+				response.Reply(rgba, nil)
+			}
+
+		case *GetSnapshotAsCairoSurfaceResponse:
+			var snapErr *C.GError
+
+			response := obj.(*GetSnapshotAsCairoSurfaceResponse)
+
+			snapResult := C.webkit_web_view_get_snapshot_finish(response.CWebView, result, &snapErr)
+
+			if snapResult == nil {
+				defer C.g_error_free(snapErr)
+				msg := C.GoString((*C.char)(snapErr.message))
+				response.Reply(nil, errors.New(msg))
+			} else {
+				surface := cairo.NewSurface(uintptr(unsafe.Pointer(snapResult)), false)
+
+				if status := surface.Status(); status == cairo.STATUS_SUCCESS {
+					response.Reply(surface, nil)
+				} else {
+					response.Reply(nil, fmt.Errorf("Cairo surface error %d", status))
+				}
+			}
+
+		default:
+		}
+	}
 }
 
 // NewWebView creates a new WebView with the default WebContext and the default
@@ -135,31 +263,23 @@ func (v *WebView) JavaScriptGlobalContext() *gojs.Context {
 // See also: webkit_web_view_run_javascript at
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebView.html#webkit-web-view-run-javascript
 func (v *WebView) RunJavaScript(script string, resultCallback func(result *gojs.Value, err error)) {
-	var cCallback C.GAsyncReadyCallback
-	var userData C.gpointer
-	var err error
+	var callbackIdPtr unsafe.Pointer
+
 	if resultCallback != nil {
-		callback := func(result *C.GAsyncResult) {
-			var jserr *C.GError
-			jsResult := C.webkit_web_view_run_javascript_finish(v.webView, result, &jserr)
-			if jsResult == nil {
-				defer C.g_error_free(jserr)
-				msg := C.GoString((*C.char)(jserr.message))
-				resultCallback(nil, errors.New(msg))
-				return
-			}
-			ctxRaw := gojs.RawGlobalContext(unsafe.Pointer(C.webkit_javascript_result_get_global_context(jsResult)))
-			jsValRaw := gojs.RawValue(unsafe.Pointer(C.webkit_javascript_result_get_value(jsResult)))
-			ctx := (*gojs.Context)(gojs.NewGlobalContextFrom(ctxRaw))
-			jsVal := ctx.NewValueFrom(jsValRaw)
-			resultCallback(jsVal, nil)
-		}
-		cCallback, userData, err = newGAsyncReadyCallback(callback)
-		if err != nil {
-			panic(err)
-		}
+		callbackId := cgoregister(``, &RunJavaScriptResponse{
+			CWebView:   v.webView,
+			Reply:      resultCallback,
+			Autoremove: true,
+		})
+
+		callbackIdPtr = unsafe.Pointer(C.CString(callbackId))
 	}
-	C.webkit_web_view_run_javascript(v.webView, (*C.gchar)(C.CString(script)), nil, cCallback, userData)
+
+	C.webkit_web_view_run_javascript(v.webView,
+		(*C.gchar)(C.CString(script)),
+		nil,
+		(C.GAsyncReadyCallback)(C.webkit2_gasync_callback),
+		callbackIdPtr)
 }
 
 // Destroy destroys the WebView's corresponding GtkWidget and marks its internal
@@ -199,69 +319,24 @@ const cairoImageSurfaceFormatARGB32 = 0
 // See also: webkit_web_view_get_snapshot at
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebView.html#webkit-web-view-get-snapshot
 func (v *WebView) GetSnapshotWithOptions(region SnapshotRegion, options SnapshotOptions, resultCallback func(result *image.RGBA, err error)) {
-	var cCallback C.GAsyncReadyCallback
-	var userData C.gpointer
-	var err error
+	var callbackIdPtr unsafe.Pointer
+
 	if resultCallback != nil {
-		callback := func(result *C.GAsyncResult) {
-			var snapErr *C.GError
-			snapResult := C.webkit_web_view_get_snapshot_finish(v.webView, result, &snapErr)
-			if snapResult == nil {
-				defer C.g_error_free(snapErr)
-				msg := C.GoString((*C.char)(snapErr.message))
-				resultCallback(nil, errors.New(msg))
-				return
-			}
-			defer C.cairo_surface_destroy(snapResult)
+		callbackId := cgoregister(``, &GetSnapshotAsImageResponse{
+			CWebView:   v.webView,
+			Reply:      resultCallback,
+			Autoremove: true,
+		})
 
-			if C.cairo_surface_get_type(snapResult) != cairoSurfaceTypeImage ||
-				C.cairo_image_surface_get_format(snapResult) != cairoImageSurfaceFormatARGB32 {
-				panic("Snapshot in unexpected format")
-			}
-
-			w := int(C.cairo_image_surface_get_width(snapResult))
-			h := int(C.cairo_image_surface_get_height(snapResult))
-			stride := int(C.cairo_image_surface_get_stride(snapResult))
-			data := unsafe.Pointer(C.cairo_image_surface_get_data(snapResult))
-			surfaceBytes := C.GoBytes(data, C.int(stride*h))
-			// convert from b,g,r,a or a,r,g,b(local endianness) to r,g,b,a
-			testint, _ := binary.ReadUvarint(bytes.NewBuffer([]byte{0x1, 0}))
-			if testint == 0x1 {
-				// Little: b,g,r,a -> r,g,b,a
-				for i := 0; i < w*h; i++ {
-					b := surfaceBytes[4*i+0]
-					r := surfaceBytes[4*i+2]
-					surfaceBytes[4*i+0] = r
-					surfaceBytes[4*i+2] = b
-				}
-			} else {
-				// Big: a,r,g,b -> r,g,b,a
-				for i := 0; i < w*h; i++ {
-					a := surfaceBytes[4*i+0]
-					r := surfaceBytes[4*i+1]
-					g := surfaceBytes[4*i+2]
-					b := surfaceBytes[4*i+3]
-					surfaceBytes[4*i+0] = r
-					surfaceBytes[4*i+1] = g
-					surfaceBytes[4*i+2] = b
-					surfaceBytes[4*i+3] = a
-				}
-			}
-			rgba := &image.RGBA{surfaceBytes, stride, image.Rect(0, 0, w, h)}
-			resultCallback(rgba, nil)
-		}
-		cCallback, userData, err = newGAsyncReadyCallback(callback)
-		if err != nil {
-			panic(err)
-		}
+		callbackIdPtr = unsafe.Pointer(C.CString(callbackId))
 	}
 
 	C.webkit_web_view_get_snapshot(v.webView,
 		(C.WebKitSnapshotRegion)(region), // FullDocument is the only working region at this point
 		(C.WebKitSnapshotOptions)(options),
 		nil,
-		cCallback,
-		userData)
+		(C.GAsyncReadyCallback)(C.webkit2_gasync_callback),
+		callbackIdPtr)
 }
 
 func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)) {
@@ -269,39 +344,22 @@ func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)
 }
 
 func (v *WebView) GetSnapshotSurfaceWithOptions(region SnapshotRegion, options SnapshotOptions, resultCallback func(result *cairo.Surface, err error)) {
-	var cCallback C.GAsyncReadyCallback
-	var userData C.gpointer
-	var err error
+	var callbackIdPtr unsafe.Pointer
+
 	if resultCallback != nil {
-		callback := func(result *C.GAsyncResult) {
-			var snapErr *C.GError
-			snapResult := C.webkit_web_view_get_snapshot_finish(v.webView, result, &snapErr)
-			if snapResult == nil {
-				defer C.g_error_free(snapErr)
-				msg := C.GoString((*C.char)(snapErr.message))
-				resultCallback(nil, errors.New(msg))
-				return
-			}
+		callbackId := cgoregister(``, &GetSnapshotAsCairoSurfaceResponse{
+			CWebView:   v.webView,
+			Reply:      resultCallback,
+			Autoremove: true,
+		})
 
-			surface := cairo.NewSurface(uintptr(unsafe.Pointer(snapResult)), false)
-
-			if status := surface.Status(); status == cairo.STATUS_SUCCESS {
-				resultCallback(surface, nil)
-			} else {
-				resultCallback(nil, fmt.Errorf("Cairo surface error %d", status))
-			}
-		}
-
-		cCallback, userData, err = newGAsyncReadyCallback(callback)
-		if err != nil {
-			panic(err)
-		}
+		callbackIdPtr = unsafe.Pointer(C.CString(callbackId))
 	}
 
 	C.webkit_web_view_get_snapshot(v.webView,
 		(C.WebKitSnapshotRegion)(region), // FullDocument is the only working region at this point
 		(C.WebKitSnapshotOptions)(options),
 		nil,
-		cCallback,
-		userData)
+		(C.GAsyncReadyCallback)(C.webkit2_gasync_callback),
+		callbackIdPtr)
 }
