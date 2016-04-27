@@ -3,7 +3,7 @@ package webkit2
 import (
 	"runtime"
 
-	"github.com/gotk3/gotk3/gtk"
+	"github.com/auroralaboratories/gotk3/gtk"
 )
 
 func init() {

@@ -10,7 +10,7 @@ import (
     "encoding/binary"
     "errors"
     "fmt"
-    "github.com/gotk3/gotk3/cairo"
+    "github.com/auroralaboratories/gotk3/cairo"
     "github.com/sqs/gojs"
     "image"
     "unsafe"

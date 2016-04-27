@@ -8,9 +8,9 @@ package webkit2
 import "C"
 
 import (
-	"github.com/gotk3/gotk3/cairo"
-	"github.com/gotk3/gotk3/glib"
-	"github.com/gotk3/gotk3/gtk"
+	"github.com/auroralaboratories/gotk3/cairo"
+	"github.com/auroralaboratories/gotk3/glib"
+	"github.com/auroralaboratories/gotk3/gtk"
 	"github.com/sqs/gojs"
 	"image"
 	"unsafe"

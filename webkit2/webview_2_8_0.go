@@ -8,7 +8,7 @@ package webkit2
 import "C"
 
 import (
-	"github.com/gotk3/gotk3/gdk"
+	"github.com/auroralaboratories/gotk3/gdk"
 	"unsafe"
 )
 
