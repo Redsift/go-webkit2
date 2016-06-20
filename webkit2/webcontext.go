@@ -16,7 +16,7 @@ type WebContext struct {
 	webContext *C.WebKitWebContext
 
 	// Book keeping for the C allocations
-	languageGCharArray int
+	languageGCharArray **C.gchar
 	languageCStrs      []*C.char
 }
 
@@ -25,7 +25,7 @@ type WebContext struct {
 // See also: webkit_web_context_get_default at
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebContext.html#webkit-web-context-get-default.
 func DefaultWebContext() *WebContext {
-	wc := &WebContext{C.webkit_web_context_get_default()}
+	wc := &WebContext{C.webkit_web_context_get_default(), nil, nil}
 	runtime.SetFinalizer(wc, (*WebContext).Free)
 	return wc
 }
