@@ -85,7 +85,7 @@ func newWebView(webViewWidget *C.GtkWidget) *WebView {
 // See also: webkit_web_view_get_context at
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebView.html#webkit-web-view-get-context.
 func (v *WebView) Context() *WebContext {
-	return &WebContext{C.webkit_web_view_get_context(v.webView), nil, nil}
+	return &WebContext{C.webkit_web_view_get_context(v.webView), nil}
 }
 
 // LoadURI requests loading of the specified URI string.

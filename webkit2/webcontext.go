@@ -3,10 +3,7 @@ package webkit2
 // #include <webkit2/webkit2.h>
 // #include "arrays.h"
 import "C"
-import (
-	"unsafe"
-	"runtime"
-)
+import "runtime"
 
 // WebContext manages all aspects common to all WebViews.
 //
@@ -17,7 +14,6 @@ type WebContext struct {
 
 	// Book keeping for the C allocations
 	languageGCharArray **C.gchar
-	languageCStrs      []*C.char
 }
 
 // DefaultWebContext returns the default WebContext.
@@ -76,12 +72,9 @@ func (wc *WebContext) SetPreferredLanguages(languages []string) {
 	wc.freeLanguageGCharArray()
 	wc.languageGCharArray = C.alloc_gchar_array((C.size_t)(len(languages) + 1))
 
-	wc.freeLanguageCStrs()
-	wc.languageCStrs = make([]*C.char, len(languages))
 
 	for i, s := range languages {
 		cstr := C.CString(s)
-		wc.languageCStrs[i] = cstr
 		C.set_gchar_array(wc.languageGCharArray, C.int(i), (*C.gchar)(cstr))
 	}
 
@@ -92,7 +85,6 @@ func (wc *WebContext) SetPreferredLanguages(languages []string) {
 
 func (wc *WebContext) Free() {
 	wc.freeLanguageGCharArray()
-	wc.freeLanguageCStrs()
 }
 
 func (wc *WebContext) freeLanguageGCharArray() {
@@ -104,14 +96,3 @@ func (wc *WebContext) freeLanguageGCharArray() {
 	wc.languageGCharArray = nil
 }
 
-func (wc *WebContext) freeLanguageCStrs() {
-	if wc.languageCStrs == nil {
-		return
-	}
-
-	for _, cstr := range wc.languageCStrs {
-		C.free(unsafe.Pointer(cstr))
-	}
-
-	wc.languageCStrs = nil
-}
