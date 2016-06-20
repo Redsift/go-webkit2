@@ -1,6 +1,7 @@
 package webkit2
 
 // #include <webkit2/webkit2.h>
+// #include "arrays.h"
 import "C"
 
 // WebContext manages all aspects common to all WebViews.
@@ -55,4 +56,33 @@ func (wc *WebContext) SetCacheModel(model CacheModel) {
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebContext.html#webkit-web-context-clear-cache.
 func (wc *WebContext) ClearCache() {
 	C.webkit_web_context_clear_cache(wc.webContext)
+}
+
+// SetPreferredLanguages set the list of preferred languages, sorted from most desirable to least desirable.
+//
+// See also: webkit_web_context_set_preferred_languages at
+// http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebContext.html#webkit-web-context-set-preferred-languages.
+func (wc *WebContext) SetPreferredLanguages(languages []string) {
+	clang := C.alloc_gchar_array((C.size_t)(len(languages) + 1))
+
+
+	//defer C.free_gchar_array(clang)
+
+	cstrs := make([]*C.char, len(languages))
+	/*
+	defer func() {
+		for _, cstr := range cstrs {
+			C.free(unsafe.Pointer(cstr))
+		}
+	}()
+*/
+	for i, s := range languages {
+		cstr := C.CString(s)
+		cstrs[i] = cstr
+		C.set_gchar_array(clang, C.int(i), (*C.gchar)(cstr))
+	}
+
+	C.set_gchar_array(clang, C.int(len(languages)), (*C.gchar)(nil))
+
+	C.webkit_web_context_set_preferred_languages(wc.webContext, clang)
 }
