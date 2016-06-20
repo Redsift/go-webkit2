@@ -3,6 +3,10 @@ package webkit2
 // #include <webkit2/webkit2.h>
 // #include "arrays.h"
 import "C"
+import (
+	"unsafe"
+	"runtime"
+)
 
 // WebContext manages all aspects common to all WebViews.
 //
@@ -10,6 +14,10 @@ import "C"
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebContext.html.
 type WebContext struct {
 	webContext *C.WebKitWebContext
+
+	// Book keeping for the C allocations
+	languageGCharArray int
+	languageCStrs      []*C.char
 }
 
 // DefaultWebContext returns the default WebContext.
@@ -17,7 +25,9 @@ type WebContext struct {
 // See also: webkit_web_context_get_default at
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebContext.html#webkit-web-context-get-default.
 func DefaultWebContext() *WebContext {
-	return &WebContext{C.webkit_web_context_get_default()}
+	wc := &WebContext{C.webkit_web_context_get_default()}
+	runtime.SetFinalizer(wc, (*WebContext).Free)
+	return wc
 }
 
 // CacheModel describes the caching behavior.
@@ -63,26 +73,45 @@ func (wc *WebContext) ClearCache() {
 // See also: webkit_web_context_set_preferred_languages at
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebContext.html#webkit-web-context-set-preferred-languages.
 func (wc *WebContext) SetPreferredLanguages(languages []string) {
-	clang := C.alloc_gchar_array((C.size_t)(len(languages) + 1))
+	wc.freeLanguageGCharArray()
+	wc.languageGCharArray = C.alloc_gchar_array((C.size_t)(len(languages) + 1))
 
+	wc.freeLanguageCStrs()
+	wc.languageCStrs = make([]*C.char, len(languages))
 
-	//defer C.free_gchar_array(clang)
-
-	cstrs := make([]*C.char, len(languages))
-	/*
-	defer func() {
-		for _, cstr := range cstrs {
-			C.free(unsafe.Pointer(cstr))
-		}
-	}()
-*/
 	for i, s := range languages {
 		cstr := C.CString(s)
-		cstrs[i] = cstr
-		C.set_gchar_array(clang, C.int(i), (*C.gchar)(cstr))
+		wc.languageCStrs[i] = cstr
+		C.set_gchar_array(wc.languageGCharArray, C.int(i), (*C.gchar)(cstr))
 	}
 
-	C.set_gchar_array(clang, C.int(len(languages)), (*C.gchar)(nil))
+	C.set_gchar_array(wc.languageGCharArray, C.int(len(languages)), (*C.gchar)(nil))
 
-	C.webkit_web_context_set_preferred_languages(wc.webContext, clang)
+	C.webkit_web_context_set_preferred_languages(wc.webContext, wc.languageGCharArray)
+}
+
+func (wc *WebContext) Free() {
+	wc.freeLanguageGCharArray()
+	wc.freeLanguageCStrs()
+}
+
+func (wc *WebContext) freeLanguageGCharArray() {
+	if wc.languageGCharArray == nil {
+		return
+	}
+
+	C.free_gchar_array(wc.languageGCharArray)
+	wc.languageGCharArray = nil
+}
+
+func (wc *WebContext) freeLanguageCStrs() {
+	if wc.languageCStrs == nil {
+		return
+	}
+
+	for _, cstr := range wc.languageCStrs {
+		C.free(unsafe.Pointer(cstr))
+	}
+
+	wc.languageCStrs = nil
 }
