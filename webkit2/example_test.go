@@ -2,12 +2,11 @@ package webkit2_test
 
 import (
 	"fmt"
-	"runtime"
-
+	"github.com/auroralaboratories/go-webkit2/webkit2"
 	"github.com/auroralaboratories/gotk3/glib"
 	"github.com/auroralaboratories/gotk3/gtk"
-	"github.com/sourcegraph/go-webkit2/webkit2"
 	"github.com/sqs/gojs"
+	"runtime"
 )
 
 func Example() {

@@ -3,16 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/auroralaboratories/go-webkit2/webkit2"
+	"github.com/auroralaboratories/gotk3/glib"
+	"github.com/auroralaboratories/gotk3/gtk"
+	"github.com/sqs/gojs"
 	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
 	"runtime"
-
-	"github.com/conformal/gotk3/glib"
-	"github.com/conformal/gotk3/gtk"
-	"github.com/sourcegraph/go-webkit2/webkit2"
-	"github.com/sqs/gojs"
 )
 
 func main() {
