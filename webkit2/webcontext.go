@@ -72,7 +72,6 @@ func (wc *WebContext) SetPreferredLanguages(languages []string) {
 	wc.freeLanguageGCharArray()
 	wc.languageGCharArray = C.alloc_gchar_array((C.size_t)(len(languages) + 1))
 
-
 	for i, s := range languages {
 		cstr := C.CString(s)
 		C.set_gchar_array(wc.languageGCharArray, C.int(i), (*C.gchar)(cstr))
@@ -95,4 +94,3 @@ func (wc *WebContext) freeLanguageGCharArray() {
 	C.free_gchar_array(wc.languageGCharArray)
 	wc.languageGCharArray = nil
 }
-
