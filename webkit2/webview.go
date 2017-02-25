@@ -14,12 +14,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/auroralaboratories/gotk3/cairo"
+	"github.com/auroralaboratories/gotk3/glib"
+	"github.com/auroralaboratories/gotk3/gtk"
+	"github.com/sqs/gojs"
 	"image"
 	"unsafe"
-	"github.com/gotk3/gotk3/cairo"
-	"github.com/gotk3/gotk3/glib"
-	"github.com/gotk3/gotk3/gtk"
-	"github.com/sqs/gojs"
 )
 
 type SnapshotOptions int

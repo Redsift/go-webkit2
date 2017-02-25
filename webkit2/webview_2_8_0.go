@@ -1,4 +1,5 @@
 // +build !webkit2gtk_2_4_0,!webkit2gtk_2_6_0
+
 package webkit2
 
 // #include <stdlib.h>
@@ -8,7 +9,7 @@ package webkit2
 import "C"
 
 import (
-	"github.com/gotk3/gotk3/gdk"
+	"github.com/auroralaboratories/gotk3/gdk"
 	"unsafe"
 )
 

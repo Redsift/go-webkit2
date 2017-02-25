@@ -15,7 +15,7 @@ func TestSettings_EnableWriteConsoleMessagesToStdout(t *testing.T) {
 
 	write = s.GetEnableWriteConsoleMessagesToStdout()
 	if wantWrite != write {
-		t.Errorf("want changed Write == %d, got %d", wantWrite, write)
+		t.Errorf("want changed Write == %s, got %d", wantWrite, write)
 	}
 
 	// Revert to original setting.
