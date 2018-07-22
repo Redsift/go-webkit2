@@ -1,5 +1,6 @@
 package webkit2
 
+// #cgo CFLAGS: -Wno-implicit-function-declaration
 // #cgo pkg-config: webkit2gtk-4.0
 // #include "webview.h"
 //
@@ -8,12 +9,13 @@ package webkit2
 import "C"
 
 import (
+	"image"
+	"unsafe"
+
 	"github.com/auroralaboratories/gotk3/cairo"
 	"github.com/auroralaboratories/gotk3/glib"
 	"github.com/auroralaboratories/gotk3/gtk"
 	"github.com/sqs/gojs"
-	"image"
-	"unsafe"
 )
 
 type SnapshotOptions int
@@ -163,7 +165,7 @@ func (v *WebView) RunJavaScript(script string, resultCallback func(result *gojs.
 		(*C.gchar)(C.CString(script)),
 		nil,
 		(C.GAsyncReadyCallback)(C.webkit2_gasync_callback),
-		callbackIdPtr)
+		C.gpointer(callbackIdPtr))
 }
 
 // Destroy destroys the WebView's corresponding GtkWidget and marks its internal
@@ -220,7 +222,7 @@ func (v *WebView) GetSnapshotWithOptions(region SnapshotRegion, options Snapshot
 		(C.WebKitSnapshotOptions)(options),
 		nil,
 		(C.GAsyncReadyCallback)(C.webkit2_gasync_callback),
-		callbackIdPtr)
+		C.gpointer(callbackIdPtr))
 }
 
 func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)) {
@@ -245,5 +247,5 @@ func (v *WebView) GetSnapshotSurfaceWithOptions(region SnapshotRegion, options S
 		(C.WebKitSnapshotOptions)(options),
 		nil,
 		(C.GAsyncReadyCallback)(C.webkit2_gasync_callback),
-		callbackIdPtr)
+		C.gpointer(callbackIdPtr))
 }

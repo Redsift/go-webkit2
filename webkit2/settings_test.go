@@ -13,7 +13,7 @@ func TestSettings_AutoLoadImages(t *testing.T) {
 
 	autoLoad = s.GetAutoLoadImages()
 	if wantAutoLoad != autoLoad {
-		t.Errorf("want changed AutoLoad == %d, got %d", wantAutoLoad, autoLoad)
+		t.Errorf("want changed AutoLoad == %v, got %v", wantAutoLoad, autoLoad)
 	}
 
 	// Revert to original setting.

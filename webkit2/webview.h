@@ -6,6 +6,6 @@
 #include <cairo/cairo.h>
 
 // callback declarations
-void webkit2_gasync_callback(GObject *source_object, GAsyncResult *res, gpointer user_data);
+extern void webkit2_gasync_callback(GObject *source_object, GAsyncResult *res, gpointer user_data);
 
 #endif

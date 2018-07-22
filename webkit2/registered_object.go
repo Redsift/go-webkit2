@@ -1,14 +1,14 @@
 package webkit2
 
 import (
-	"github.com/satori/go.uuid"
+	"github.com/ghetzel/go-stockutil/stringutil"
 )
 
 var registeredObjects = make(map[string]interface{})
 
 func cgoregister(key string, obj interface{}) string {
 	if key == `` || key == `auto` {
-		key = uuid.NewV4().String()
+		key = stringutil.UUID().Base58()
 	}
 
 	registeredObjects[key] = obj
